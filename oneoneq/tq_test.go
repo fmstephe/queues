@@ -4,28 +4,23 @@ import (
 	"runtime"
 	"testing"
 	"time"
+	"fmt"
 )
 
 func TestFoo(t *testing.T) {
-	var itemCount int64 = 10 * 1000 * 1000
+	runtime.GOMAXPROCS(4)
+	var itemCount int64 = 100 * 1000 * 1000
 	q := New(itemCount)
-	//var target int64
 	done := make(chan bool)
-	start := time.Now().UnixNano()
 	go dequeue(itemCount, q, done)
-	<-done
 	go enqueue(itemCount, q, done)
 	<-done
 	<-done
-	total := time.Now().UnixNano() - start
-	println(total)
-	println(total/1000)
-	println(total/(1000*1000))
-	println(total/(1000*1000*1000))
 }
 
 func enqueue(num int64, q *Q, done chan bool) {
 	runtime.LockOSThread()
+	println("Entering Enqueue")
 	for i := int64(0); i < num; i++ {
 		for b := false; b == false; b = q.Enqueue(i) {}
 	}
@@ -34,7 +29,8 @@ func enqueue(num int64, q *Q, done chan bool) {
 
 func dequeue(num int64, q *Q, done chan bool) {
 	runtime.LockOSThread()
-	done <- true
+	start := time.Now().UnixNano()
+	println("Entering Dequeue")
 	sum := int64(0)
 	checksum := int64(0)
 	for i := int64(0); i < num; i++ {
@@ -43,8 +39,13 @@ func dequeue(num int64, q *Q, done chan bool) {
 		sum += item
 		checksum += i
 	}
-	println(sum)
-	println(checksum)
+	print(fmt.Sprintf("sum      %d\nchecksum %d\n", sum, checksum))
 	println()
+	total := time.Now().UnixNano() - start
+	nanos := total
+	micros := total/1000
+	millis := micros/1000
+	seconds := millis/1000
+	print(fmt.Sprintf("\nNanos   %d\nMicros  %d\nMillis  %d\nSeconds %d\n",nanos, micros, millis, seconds))
 	done <- true
 }
