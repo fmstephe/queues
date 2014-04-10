@@ -25,3 +25,7 @@ func (v *Value) Set(val int64) {
 func (v *Value) NakedSet(val int64) {
 	v.value = val
 }
+
+func (v *Value) Add(add int64) {
+	atomic.AddInt64(&v.value, add)
+}
