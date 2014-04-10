@@ -60,5 +60,5 @@ func (q *Q) StartRead() []byte {
 }
 
 func (q *Q) FinishRead() {
-	q.tail.Add(q.chunk)
+	q.head.Add(q.chunk)
 }
