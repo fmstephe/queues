@@ -11,8 +11,8 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(4)
-	var itemCount int64 = 1000 * 1000
-	q := oneoneq.New(1024, 8)
+	var itemCount int64 = 100 * 1000 * 1000
+	q := oneoneq.New(1024 * 1024 * 1024, 8)
 	done := make(chan bool)
 	f, err := os.Create("cpu.prof")
 	if err != nil {
@@ -38,7 +38,7 @@ func enqueue(num int64, q *oneoneq.Q, done chan bool) {
 		for b == nil {
 			b = q.StartWrite()
 		}
-		copy(bs, b)
+		copy(b, bs)
 		q.FinishWrite()
 	}
 	done <- true
