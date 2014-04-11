@@ -30,35 +30,31 @@ func New(size int64, chunk int64) *Q {
 	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 }
 
-func (q *Q) StartWrite() []byte {
+func (q *Q) Write(b []byte) bool {
 	tail := q.tail.NakedGet()
 	wrapPoint := tail - q.size
 	if q.headCache <= wrapPoint {
 		q.headCache = q.head.Get()
 		if q.headCache <= wrapPoint {
-			return nil
+			return false
 		}
 	}
 	idx := tail & q.mask
-	return q.buffer[idx : idx+q.chunk]
-}
-
-func (q *Q) FinishWrite() {
+	copy(q.buffer[idx : idx+q.chunk], b)
 	q.tail.Add(q.chunk)
+	return true
 }
 
-func (q *Q) StartRead() []byte {
+func (q *Q) Read(b []byte) bool {
 	head := q.head.NakedGet()
 	if head == q.tailCache {
 		q.tailCache = q.tail.Get()
 		if head == q.tailCache {
-			return nil
+			return false
 		}
 	}
 	idx := head & q.mask
-	return q.buffer[idx : idx+q.chunk]
-}
-
-func (q *Q) FinishRead() {
+	copy(b, q.buffer[idx : idx+q.chunk])
 	q.head.Add(q.chunk)
+	return true
 }

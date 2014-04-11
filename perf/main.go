@@ -34,12 +34,7 @@ func enqueue(num int64, q *oneoneq.Q, done chan bool) {
 	bs := []byte{1,2,3,4,5,6,7,8}
 	for i := int64(0); i < num; i++ {
 		bs[0] = byte(i)
-		var b []byte
-		for b == nil {
-			b = q.StartWrite()
-		}
-		copy(b, bs)
-		q.FinishWrite()
+		for w := false; w == false; w = q.Write(bs) {}
 	}
 	done <- true
 }
@@ -48,16 +43,13 @@ func dequeue(num int64, q *oneoneq.Q, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	println("Entering Dequeue")
+	bs := []byte{0,0,0,0,0,0,0,0}
 	sum := int64(0)
 	checksum := int64(0)
 	for i := int64(0); i < num; i++ {
-		var b []byte
-		for b == nil {
-			b = q.StartRead()
-		}
-		sum += int64(b[0])
+		for r := false; r == false; r = q.Read(bs) {}
+		sum += int64(bs[0])
 		checksum += int64(byte(i))
-		q.FinishRead()
 	}
 	print(fmt.Sprintf("sum      %d\nchecksum %d\n", sum, checksum))
 	println()
