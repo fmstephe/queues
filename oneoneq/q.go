@@ -21,7 +21,7 @@ func New(size int64, chunk int64) *Q {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size % chunk))
 	}
 	pow := int64(2)
-	for i := 0; i < 64; i++ { // TODO this isn't a very clever way to determine if something is a power of two
+	for i := 0; i < 64; i++ {
 		if pow == size {
 			return &Q{buffer: make([]byte, size), size: size, chunk: chunk, mask: size-1}
 		}
@@ -32,10 +32,11 @@ func New(size int64, chunk int64) *Q {
 
 func (q *Q) Write(b []byte) bool {
 	tail := q.tail.NakedGet()
-	wrapPoint := tail - q.size
-	if q.headCache <= wrapPoint {
+	writeTo := tail + q.chunk
+	headLimit := writeTo - q.size
+	if headLimit > q.headCache {
 		q.headCache = q.head.Get()
-		if q.headCache <= wrapPoint {
+		if headLimit > q.headCache {
 			return false
 		}
 	}
@@ -47,9 +48,10 @@ func (q *Q) Write(b []byte) bool {
 
 func (q *Q) Read(b []byte) bool {
 	head := q.head.NakedGet()
-	if head == q.tailCache {
+	readTo := head + q.chunk
+	if readTo > q.tailCache {
 		q.tailCache = q.tail.Get()
-		if head == q.tailCache {
+		if readTo > q.tailCache {
 			return false
 		}
 	}
