@@ -30,33 +30,39 @@ func New(size int64, chunk int64) *Q {
 	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 }
 
-func (q *Q) Write(b []byte) bool {
+func (q *Q) Write(b []byte) int64 {
 	tail := q.tail.NakedGet()
 	writeTo := tail + q.chunk
 	headLimit := writeTo - q.size
 	if headLimit > q.headCache {
 		q.headCache = q.head.Get()
 		if headLimit > q.headCache {
-			return false
+			return 0
 		}
 	}
 	idx := tail & q.mask
 	copy(q.buffer[idx : idx+q.chunk], b)
 	q.tail.Add(q.chunk)
-	return true
+	return q.chunk
 }
 
-func (q *Q) Read(b []byte) bool {
+func (q *Q) Read(b []byte) int64 {
+	bl := int64(len(b))
 	head := q.head.NakedGet()
-	readTo := head + q.chunk
+	readTo := head + bl
 	if readTo > q.tailCache {
 		q.tailCache = q.tail.Get()
 		if readTo > q.tailCache {
-			return false
+			return 0
 		}
 	}
 	idx := head & q.mask
-	copy(b, q.buffer[idx : idx+q.chunk])
-	q.head.Add(q.chunk)
-	return true
+	nxt := idx + bl
+	if nxt > q.size {
+		nxt = q.size
+	}
+	copy(b, q.buffer[idx : nxt])
+	read := nxt - idx
+	q.head.Add(read)
+	return read
 }
