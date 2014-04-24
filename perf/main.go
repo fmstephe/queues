@@ -9,7 +9,7 @@ import (
 	"github.com/fmstephe/queues/oneoneq"
 )
 
-const chunk = 64
+const chunk = 8
 const queue = 1024 * 1024
 
 func main() {

@@ -7,16 +7,18 @@ import (
 )
 
 type Q struct {
+	_1 atomicint.CacheLine
 	head atomicint.CacheLine
 	headCache atomicint.CacheLine
 	tail atomicint.CacheLine
 	tailCache atomicint.CacheLine
-	// Read only cache line
+	_2 atomicint.CacheLine
+	// Read only
 	buffer []byte
 	size int64
 	chunk int64
 	mask int64
-	cacheLineFiller [10]int64
+	_3 atomicint.CacheLine
 }
 
 func New(size int64, chunk int64) *Q {
