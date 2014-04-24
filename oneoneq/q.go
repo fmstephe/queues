@@ -52,7 +52,7 @@ func (q *Q) Write(b []byte) int64 {
 	idx := tail & q.mask
 	nxt := idx + chunk
 	copy(q.buffer[idx : nxt], b)
-	q.tail.Add(chunk)
+	q.tail.LazyStore(q.tail.Value + chunk)
 	return chunk
 }
 
@@ -69,6 +69,6 @@ func (q *Q) Read(b []byte) int64 {
 	idx := head & q.mask
 	nxt := idx + chunk
 	copy(b, q.buffer[idx : nxt])
-	q.head.Add(chunk)
+	q.head.LazyStore(q.head.Value + chunk)
 	return chunk
 }
