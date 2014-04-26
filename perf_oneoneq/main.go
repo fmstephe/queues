@@ -15,7 +15,7 @@ const queue = 1024 * 1024
 func main() {
 	runtime.GOMAXPROCS(4)
 	var itemCount int64 = 100 * 1000 * 1000
-	q := oneoneq.New(queue, chunk)
+	q := oneoneq.NewByteQ(queue, chunk)
 	done := make(chan bool)
 	f, err := os.Create("cpu.prof")
 	if err != nil {

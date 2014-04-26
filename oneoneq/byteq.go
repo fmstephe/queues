@@ -23,7 +23,7 @@ type ByteQ struct {
 	_3 fatomic.AtomicInt
 }
 
-func New(size int64, chunk int64) *ByteQ {
+func NewByteQ(size int64, chunk int64) *ByteQ {
 	if size % chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size % chunk))
 	}
