@@ -3,22 +3,22 @@ package oneoneq
 import (
 	"unsafe"
 	"fmt"
-	"github.com/fmstephe/queues/atomicint"
+	"github.com/fmstephe/fatomic"
 )
 
 type Q struct {
-	_1 atomicint.CacheLine
-	head atomicint.CacheLine
-	headCache atomicint.CacheLine
-	tail atomicint.CacheLine
-	tailCache atomicint.CacheLine
-	_2 atomicint.CacheLine
+	_1 fatomic.AtomicInt
+	head fatomic.AtomicInt
+	headCache fatomic.AtomicInt
+	tail fatomic.AtomicInt
+	tailCache fatomic.AtomicInt
+	_2 fatomic.AtomicInt
 	// Read only
 	buffer []byte
 	size int64
 	chunk int64
 	mask int64
-	_3 atomicint.CacheLine
+	_3 fatomic.AtomicInt
 }
 
 func New(size int64, chunk int64) *Q {
@@ -28,7 +28,8 @@ func New(size int64, chunk int64) *Q {
 	pow := int64(2)
 	for i := 0; i < 64; i++ {
 		if pow == size {
-			q := &Q{buffer: make([]byte, size), size: size, chunk: chunk, mask: size-1}
+			buffer := fatomic.CacheProtectedBytes(int(size))
+			q := &Q{buffer: buffer, size: size, chunk: chunk, mask: size-1}
 			println(unsafe.Sizeof(*q))
 			println(q)
 			return q
@@ -44,7 +45,7 @@ func (q *Q) Write(b []byte) int64 {
 	writeTo := tail + chunk
 	headLimit := writeTo - q.size
 	if headLimit > q.headCache.Value {
-		q.headCache.Value = q.head.Get()
+		q.headCache.Value = q.head.ALoad()
 		if headLimit > q.headCache.Value {
 			return 0
 		}
@@ -52,7 +53,7 @@ func (q *Q) Write(b []byte) int64 {
 	idx := tail & q.mask
 	nxt := idx + chunk
 	copy(q.buffer[idx : nxt], b)
-	q.tail.LazyStore(q.tail.Value + chunk)
+	q.tail.LazyAdd(chunk)
 	return chunk
 }
 
@@ -61,7 +62,7 @@ func (q *Q) Read(b []byte) int64 {
 	head := q.head.Value
 	readTo := head + chunk
 	if readTo > q.tailCache.Value {
-		q.tailCache.Value = q.tail.Get()
+		q.tailCache.Value = q.tail.ALoad()
 		if readTo > q.tailCache.Value {
 			return 0
 		}
@@ -69,6 +70,6 @@ func (q *Q) Read(b []byte) int64 {
 	idx := head & q.mask
 	nxt := idx + chunk
 	copy(b, q.buffer[idx : nxt])
-	q.head.LazyStore(q.head.Value + chunk)
+	q.head.LazyAdd(chunk)
 	return chunk
 }
