@@ -31,10 +31,10 @@ func main() {
 
 func enqueue(num int64, q *oneoneq.Q, done chan bool) {
 	runtime.LockOSThread()
-	bs := []byte{1,2,3,4,5,6,7,8}
+	writeBuffer := q.WriteBuffer()
 	for i := int64(0); i < num; i++ {
-		bs[0] = byte(i)
-		for w := int64(0); w == 0; w = q.Write(bs) {}
+		writeBuffer[0] = byte(i)
+		for w := int64(0); w == 0; w = q.Write() {}
 	}
 	done <- true
 }
@@ -42,12 +42,12 @@ func enqueue(num int64, q *oneoneq.Q, done chan bool) {
 func dequeue(num int64, q *oneoneq.Q, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
-	bs := []byte{0,0,0,0,0,0,0,0}
+	readBuffer := q.ReadBuffer()
 	sum := int64(0)
 	checksum := int64(0)
 	for i := int64(0); i < num; i++ {
-		for r := int64(0); r == 0; r = q.Read(bs) {}
-		sum += int64(bs[0])
+		for r := int64(0); r == 0; r = q.Read() {}
+		sum += int64(readBuffer[0])
 		checksum += int64(byte(i))
 	}
 	print(fmt.Sprintf("sum      %d\nchecksum %d\n", sum, checksum))

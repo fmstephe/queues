@@ -14,7 +14,9 @@ type Q struct {
 	tailCache fatomic.AtomicInt
 	_2 fatomic.AtomicInt
 	// Read only
-	buffer []byte
+	ringBuffer []byte
+	readBuffer []byte
+	writeBuffer []byte
 	size int64
 	chunk int64
 	mask int64
@@ -28,8 +30,10 @@ func New(size int64, chunk int64) *Q {
 	pow := int64(2)
 	for i := 0; i < 64; i++ {
 		if pow == size {
-			buffer := fatomic.CacheProtectedBytes(int(size))
-			q := &Q{buffer: buffer, size: size, chunk: chunk, mask: size-1}
+			ringBuffer := fatomic.CacheProtectedBytes(int(size))
+			readBuffer := fatomic.CacheProtectedBytes(int(chunk))
+			writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
+			q := &Q{ringBuffer: ringBuffer,readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size-1}
 			println(unsafe.Sizeof(*q))
 			println(q)
 			return q
@@ -39,7 +43,11 @@ func New(size int64, chunk int64) *Q {
 	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 }
 
-func (q *Q) Write(b []byte) int64 {
+func (q *Q) ReadBuffer() []byte {
+	return q.readBuffer
+}
+
+func (q *Q) Write() int64 {
 	chunk := q.chunk
 	tail := q.tail.Value
 	writeTo := tail + chunk
@@ -52,12 +60,16 @@ func (q *Q) Write(b []byte) int64 {
 	}
 	idx := tail & q.mask
 	nxt := idx + chunk
-	copy(q.buffer[idx : nxt], b)
+	copy(q.ringBuffer[idx : nxt], q.writeBuffer)
 	q.tail.LazyAdd(chunk)
 	return chunk
 }
 
-func (q *Q) Read(b []byte) int64 {
+func (q *Q) WriteBuffer() []byte {
+	return q.writeBuffer
+}
+
+func (q *Q) Read() int64 {
 	chunk := q.chunk
 	head := q.head.Value
 	readTo := head + chunk
@@ -69,7 +81,7 @@ func (q *Q) Read(b []byte) int64 {
 	}
 	idx := head & q.mask
 	nxt := idx + chunk
-	copy(b, q.buffer[idx : nxt])
+	copy(q.readBuffer, q.ringBuffer[idx : nxt])
 	q.head.LazyAdd(chunk)
 	return chunk
 }
