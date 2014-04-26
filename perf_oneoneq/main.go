@@ -29,7 +29,7 @@ func main() {
 	pprof.StopCPUProfile()
 }
 
-func enqueue(num int64, q *oneoneq.Q, done chan bool) {
+func enqueue(num int64, q *oneoneq.ByteQ, done chan bool) {
 	runtime.LockOSThread()
 	writeBuffer := q.WriteBuffer()
 	for i := int64(0); i < num; i++ {
@@ -39,7 +39,7 @@ func enqueue(num int64, q *oneoneq.Q, done chan bool) {
 	done <- true
 }
 
-func dequeue(num int64, q *oneoneq.Q, done chan bool) {
+func dequeue(num int64, q *oneoneq.ByteQ, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	readBuffer := q.ReadBuffer()
