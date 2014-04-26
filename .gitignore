@@ -1,3 +1,4 @@
 *.swp
 *.prof
-perf*
+perf_oneoneq_pointers
+perf_oneoneq_bytes
