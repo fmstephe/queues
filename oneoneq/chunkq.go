@@ -1,31 +1,30 @@
 package oneoneq
 
 import (
-	"unsafe"
 	"fmt"
 	"github.com/fmstephe/fatomic"
 )
 
 type ChunkQ struct {
-	_1 fatomic.AtomicInt
-	head fatomic.AtomicInt
+	_1        fatomic.AtomicInt
+	head      fatomic.AtomicInt
 	headCache fatomic.AtomicInt
-	tail fatomic.AtomicInt
+	tail      fatomic.AtomicInt
 	tailCache fatomic.AtomicInt
-	_2 fatomic.AtomicInt
+	_2        fatomic.AtomicInt
 	// Read only
-	ringBuffer []byte
-	readBuffer []byte
+	ringBuffer  []byte
+	readBuffer  []byte
 	writeBuffer []byte
-	size int64
-	chunk int64
-	mask int64
-	_3 fatomic.AtomicInt
+	size        int64
+	chunk       int64
+	mask        int64
+	_3          fatomic.AtomicInt
 }
 
 func NewChunkQ(size int64, chunk int64) *ChunkQ {
-	if size % chunk != 0 {
-		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size % chunk))
+	if size%chunk != 0 {
+		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
 	pow := int64(2)
 	for i := 0; i < 64; i++ {
@@ -33,9 +32,7 @@ func NewChunkQ(size int64, chunk int64) *ChunkQ {
 			ringBuffer := fatomic.CacheProtectedBytes(int(size))
 			readBuffer := fatomic.CacheProtectedBytes(int(chunk))
 			writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
-			q := &ChunkQ{ringBuffer: ringBuffer,readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size-1}
-			println(unsafe.Sizeof(*q))
-			println(q)
+			q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
 			return q
 		}
 		pow *= 2
@@ -60,7 +57,7 @@ func (q *ChunkQ) Write() int64 {
 	}
 	idx := tail & q.mask
 	nxt := idx + chunk
-	copy(q.ringBuffer[idx : nxt], q.writeBuffer)
+	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
 	q.tail.LazyAdd(chunk)
 	return chunk
 }
@@ -81,7 +78,7 @@ func (q *ChunkQ) Read() int64 {
 	}
 	idx := head & q.mask
 	nxt := idx + chunk
-	copy(q.readBuffer, q.ringBuffer[idx : nxt])
+	copy(q.readBuffer, q.ringBuffer[idx:nxt])
 	q.head.LazyAdd(chunk)
 	return chunk
 }

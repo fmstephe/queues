@@ -1,23 +1,23 @@
 package oneoneq
 
 import (
-	"unsafe"
 	"fmt"
 	"github.com/fmstephe/fatomic"
+	"unsafe"
 )
 
 type PointerQ struct {
-	_1 fatomic.AtomicInt
-	head fatomic.AtomicInt
+	_1        fatomic.AtomicInt
+	head      fatomic.AtomicInt
 	headCache fatomic.AtomicInt
-	tail fatomic.AtomicInt
+	tail      fatomic.AtomicInt
 	tailCache fatomic.AtomicInt
-	_2 fatomic.AtomicInt
+	_2        fatomic.AtomicInt
 	// Read only
 	ringBuffer []unsafe.Pointer
-	size int64
-	mask int64
-	_3 fatomic.AtomicInt
+	size       int64
+	mask       int64
+	_3         fatomic.AtomicInt
 }
 
 func NewPointerQ(size int64) *PointerQ {
@@ -25,9 +25,7 @@ func NewPointerQ(size int64) *PointerQ {
 	for i := 0; i < 64; i++ {
 		if pow == size {
 			ringBuffer := fatomic.CacheProtectedPointers(int(size))
-			q := &PointerQ{ringBuffer: ringBuffer, size: size, mask: size-1}
-			println(unsafe.Sizeof(*q))
-			println(q)
+			q := &PointerQ{ringBuffer: ringBuffer, size: size, mask: size - 1}
 			return q
 		}
 		pow *= 2
