@@ -6,7 +6,7 @@ import (
 	"github.com/fmstephe/fatomic"
 )
 
-type ByteQ struct {
+type ChunkQ struct {
 	_1 fatomic.AtomicInt
 	head fatomic.AtomicInt
 	headCache fatomic.AtomicInt
@@ -23,7 +23,7 @@ type ByteQ struct {
 	_3 fatomic.AtomicInt
 }
 
-func NewByteQ(size int64, chunk int64) *ByteQ {
+func NewChunkQ(size int64, chunk int64) *ChunkQ {
 	if size % chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size % chunk))
 	}
@@ -33,7 +33,7 @@ func NewByteQ(size int64, chunk int64) *ByteQ {
 			ringBuffer := fatomic.CacheProtectedBytes(int(size))
 			readBuffer := fatomic.CacheProtectedBytes(int(chunk))
 			writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
-			q := &ByteQ{ringBuffer: ringBuffer,readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size-1}
+			q := &ChunkQ{ringBuffer: ringBuffer,readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size-1}
 			println(unsafe.Sizeof(*q))
 			println(q)
 			return q
@@ -43,11 +43,11 @@ func NewByteQ(size int64, chunk int64) *ByteQ {
 	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 }
 
-func (q *ByteQ) ReadBuffer() []byte {
+func (q *ChunkQ) ReadBuffer() []byte {
 	return q.readBuffer
 }
 
-func (q *ByteQ) Write() int64 {
+func (q *ChunkQ) Write() int64 {
 	chunk := q.chunk
 	tail := q.tail.Value
 	writeTo := tail + chunk
@@ -65,11 +65,11 @@ func (q *ByteQ) Write() int64 {
 	return chunk
 }
 
-func (q *ByteQ) WriteBuffer() []byte {
+func (q *ChunkQ) WriteBuffer() []byte {
 	return q.writeBuffer
 }
 
-func (q *ByteQ) Read() int64 {
+func (q *ChunkQ) Read() int64 {
 	chunk := q.chunk
 	head := q.head.Value
 	readTo := head + chunk
