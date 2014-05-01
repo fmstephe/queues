@@ -23,21 +23,17 @@ type ChunkQ struct {
 }
 
 func NewChunkQ(size int64, chunk int64) *ChunkQ {
+	if !powerOfTwo(size) {
+		panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
+	}
 	if size%chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
-	pow := int64(2)
-	for i := 0; i < 64; i++ {
-		if pow == size {
-			ringBuffer := fatomic.CacheProtectedBytes(int(size))
-			readBuffer := fatomic.CacheProtectedBytes(int(chunk))
-			writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
-			q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
-			return q
-		}
-		pow *= 2
-	}
-	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
+	ringBuffer := fatomic.CacheProtectedBytes(int(size))
+	readBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
+	return q
 }
 
 func (q *ChunkQ) ReadBuffer() []byte {

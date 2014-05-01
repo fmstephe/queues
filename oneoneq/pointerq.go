@@ -21,16 +21,12 @@ type PointerQ struct {
 }
 
 func NewPointerQ(size int64) *PointerQ {
-	pow := int64(2)
-	for i := 0; i < 64; i++ {
-		if pow == size {
-			ringBuffer := fatomic.CacheProtectedPointers(int(size))
-			q := &PointerQ{ringBuffer: ringBuffer, size: size, mask: size - 1}
-			return q
-		}
-		pow *= 2
+	if !powerOfTwo(size) {
+		panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 	}
-	panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
+	ringBuffer := fatomic.CacheProtectedPointers(int(size))
+	q := &PointerQ{ringBuffer: ringBuffer, size: size, mask: size - 1}
+	return q
 }
 
 func (q *PointerQ) Write(val unsafe.Pointer) bool {
