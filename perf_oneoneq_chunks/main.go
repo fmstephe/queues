@@ -11,10 +11,10 @@ import (
 
 const chunk = 8
 const queue = 1024 * 1024
+const itemCount int64 = 100 * 1000 * 1000
 
 func main() {
 	runtime.GOMAXPROCS(4)
-	var itemCount int64 = 100 * 1000 * 1000
 	q := oneoneq.NewChunkQ(queue, chunk)
 	done := make(chan bool)
 	f, err := os.Create("cpu.prof")
