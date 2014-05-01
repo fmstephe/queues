@@ -29,9 +29,9 @@ func NewChunkQ(size int64, chunk int64) *ChunkQ {
 	if size%chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
-	ringBuffer := fatomic.CacheProtectedBytes(int(size))
-	readBuffer := fatomic.CacheProtectedBytes(int(chunk))
-	writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	ringBuffer := fatomic.BufferedAlignedBytes(int(size), 64, 12)
+	readBuffer := fatomic.BufferedAlignedBytes(int(chunk), 64, 12)
+	writeBuffer := fatomic.BufferedAlignedBytes(int(chunk), 64, 12)
 	q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
 	return q
 }

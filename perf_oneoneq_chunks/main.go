@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-const chunk = 8
+const chunk = 64
 const queue = 1024 * 1024
-const itemCount int64 = 100 * 1000 * 1000
+const itemCount int64 = 10 * 1000 * 1000
 
 func main() {
 	runtime.GOMAXPROCS(4)
