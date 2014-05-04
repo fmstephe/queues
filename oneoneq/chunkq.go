@@ -54,7 +54,7 @@ func (q *ChunkQ) Write() int64 {
 	idx := tail & q.mask
 	nxt := idx + chunk
 	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
-	q.tail.LazyAdd(chunk)
+	fatomic.LazyStore(&q.tail.Value, tail+chunk) // q.tail.LazyAdd(chunk)
 	return chunk
 }
 
@@ -75,6 +75,6 @@ func (q *ChunkQ) Read() int64 {
 	idx := head & q.mask
 	nxt := idx + chunk
 	copy(q.readBuffer, q.ringBuffer[idx:nxt])
-	q.head.LazyAdd(chunk)
+	fatomic.LazyStore(&q.head.Value, head + chunk) // q.head.LazyAdd(chunk)
 	return chunk
 }

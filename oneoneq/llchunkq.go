@@ -48,8 +48,8 @@ func (q *LLChunkQ) WriteBuffer() []byte {
 	return q.ringBuffer[idx:nxt]
 }
 
-func (q *LLChunkQ) Write() {
-	q.tail.LazyAdd(q.chunk)
+func (q *LLChunkQ) CommitWrite() {
+	fatomic.LazyStore(&q.tail.Value, q.tail.Value+q.chunk) // q.tail.LazyAdd(q.chunk)
 }
 
 func (q *LLChunkQ) ReadBuffer() []byte {
@@ -67,6 +67,6 @@ func (q *LLChunkQ) ReadBuffer() []byte {
 	return q.ringBuffer[idx:nxt]
 }
 
-func (q *LLChunkQ) Read() {
-	q.head.LazyAdd(q.chunk)
+func (q *LLChunkQ) CommitRead() {
+	fatomic.LazyStore(&q.head.Value, q.head.Value+q.chunk) // q.head.LazyAdd(q.chunk)
 }

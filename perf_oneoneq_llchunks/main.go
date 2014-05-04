@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const chunk = 8
+const chunk = 64
 const queue = 1024 * 1024
 const itemCount int64 = 100 * 1000 * 1000
 
@@ -37,7 +37,7 @@ func enqueue(num int64, q *oneoneq.LLChunkQ, done chan bool) {
 			writeBuffer = q.WriteBuffer()
 		}
 		writeBuffer[0] = byte(i)
-		q.Write()
+		q.CommitWrite()
 	}
 	done <- true
 }
@@ -54,7 +54,7 @@ func dequeue(num int64, q *oneoneq.LLChunkQ, done chan bool) {
 		}
 		sum += int64(readBuffer[0])
 		checksum += int64(byte(i))
-		q.Read()
+		q.CommitRead()
 	}
 	print(fmt.Sprintf("sum      %d\nchecksum %d\n", sum, checksum))
 	println()
