@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/fmstephe/queues/oneoneq"
+	"github.com/fmstephe/queues/spscq"
 	"os"
 	"runtime"
 	"runtime/pprof"
@@ -15,7 +15,7 @@ const itemCount int64 = 100 * 1000 * 1000
 
 func main() {
 	runtime.GOMAXPROCS(4)
-	q := oneoneq.NewChunkQ(queue, chunk)
+	q := spscq.NewChunkQ(queue, chunk)
 	done := make(chan bool)
 	f, err := os.Create("cpu.prof")
 	if err != nil {
@@ -29,7 +29,7 @@ func main() {
 	pprof.StopCPUProfile()
 }
 
-func enqueue(num int64, q *oneoneq.ChunkQ, done chan bool) {
+func enqueue(num int64, q *spscq.ChunkQ, done chan bool) {
 	runtime.LockOSThread()
 	writeBuffer := q.WriteBuffer()
 	for i := int64(0); i < num; i++ {
@@ -40,7 +40,7 @@ func enqueue(num int64, q *oneoneq.ChunkQ, done chan bool) {
 	done <- true
 }
 
-func dequeue(num int64, q *oneoneq.ChunkQ, done chan bool) {
+func dequeue(num int64, q *spscq.ChunkQ, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	readBuffer := q.ReadBuffer()

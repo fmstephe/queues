@@ -1,4 +1,4 @@
-package oneoneq
+package spscq
 
 import (
 	"github.com/fmstephe/fstrconv"

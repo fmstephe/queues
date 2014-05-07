@@ -1,11 +1,11 @@
-package oneoneq
+package spscq
 
 import (
 	"fmt"
 	"github.com/fmstephe/fatomic"
 )
 
-type LLChunkQ struct {
+type ChunkQ struct {
 	_1        fatomic.AtomicInt
 	head      fatomic.AtomicInt
 	headCache fatomic.AtomicInt
@@ -14,13 +14,15 @@ type LLChunkQ struct {
 	_2        fatomic.AtomicInt
 	// Read only
 	ringBuffer  []byte
+	readBuffer  []byte
+	writeBuffer []byte
 	size        int64
 	chunk       int64
 	mask        int64
 	_3          fatomic.AtomicInt
 }
 
-func NewLLChunkQ(size int64, chunk int64) *LLChunkQ {
+func NewChunkQ(size int64, chunk int64) *ChunkQ {
 	if !powerOfTwo(size) {
 		panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 	}
@@ -28,11 +30,17 @@ func NewLLChunkQ(size int64, chunk int64) *LLChunkQ {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
 	ringBuffer := fatomic.CacheProtectedBytes(int(size))
-	q := &LLChunkQ{ringBuffer: ringBuffer, size: size, chunk: chunk, mask: size - 1}
+	readBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
 	return q
 }
 
-func (q *LLChunkQ) WriteBuffer() []byte {
+func (q *ChunkQ) ReadBuffer() []byte {
+	return q.readBuffer
+}
+
+func (q *ChunkQ) Write() int64 {
 	chunk := q.chunk
 	tail := q.tail.Value
 	writeTo := tail + chunk
@@ -40,33 +48,33 @@ func (q *LLChunkQ) WriteBuffer() []byte {
 	if headLimit > q.headCache.Value {
 		q.headCache.Value = q.head.ALoad()
 		if headLimit > q.headCache.Value {
-			return nil
+			return 0
 		}
 	}
 	idx := tail & q.mask
 	nxt := idx + chunk
-	return q.ringBuffer[idx:nxt]
+	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
+	fatomic.LazyStore(&q.tail.Value, tail+chunk) // q.tail.LazyAdd(chunk)
+	return chunk
 }
 
-func (q *LLChunkQ) CommitWrite() {
-	fatomic.LazyStore(&q.tail.Value, q.tail.Value+q.chunk) // q.tail.LazyAdd(q.chunk)
+func (q *ChunkQ) WriteBuffer() []byte {
+	return q.writeBuffer
 }
 
-func (q *LLChunkQ) ReadBuffer() []byte {
+func (q *ChunkQ) Read() int64 {
 	chunk := q.chunk
 	head := q.head.Value
 	readTo := head + chunk
 	if readTo > q.tailCache.Value {
 		q.tailCache.Value = q.tail.ALoad()
 		if readTo > q.tailCache.Value {
-			return nil
+			return 0
 		}
 	}
 	idx := head & q.mask
 	nxt := idx + chunk
-	return q.ringBuffer[idx:nxt]
-}
-
-func (q *LLChunkQ) CommitRead() {
-	fatomic.LazyStore(&q.head.Value, q.head.Value+q.chunk) // q.head.LazyAdd(q.chunk)
+	copy(q.readBuffer, q.ringBuffer[idx:nxt])
+	fatomic.LazyStore(&q.head.Value, head+chunk) // q.head.LazyAdd(chunk)
+	return chunk
 }
