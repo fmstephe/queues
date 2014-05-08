@@ -40,7 +40,7 @@ func (q *ChunkQ) ReadBuffer() []byte {
 	return q.readBuffer
 }
 
-func (q *ChunkQ) Write() int64 {
+func (q *ChunkQ) Write() bool {
 	chunk := q.chunk
 	tail := q.tail.Value
 	writeTo := tail + chunk
@@ -48,33 +48,33 @@ func (q *ChunkQ) Write() int64 {
 	if headLimit > q.headCache.Value {
 		q.headCache.Value = q.head.ALoad()
 		if headLimit > q.headCache.Value {
-			return 0
+			return false
 		}
 	}
 	idx := tail & q.mask
 	nxt := idx + chunk
 	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
 	fatomic.LazyStore(&q.tail.Value, tail+chunk) // q.tail.LazyAdd(chunk)
-	return chunk
+	return true
 }
 
 func (q *ChunkQ) WriteBuffer() []byte {
 	return q.writeBuffer
 }
 
-func (q *ChunkQ) Read() int64 {
+func (q *ChunkQ) Read() bool {
 	chunk := q.chunk
 	head := q.head.Value
 	readTo := head + chunk
 	if readTo > q.tailCache.Value {
 		q.tailCache.Value = q.tail.ALoad()
 		if readTo > q.tailCache.Value {
-			return 0
+			return false
 		}
 	}
 	idx := head & q.mask
 	nxt := idx + chunk
 	copy(q.readBuffer, q.ringBuffer[idx:nxt])
 	fatomic.LazyStore(&q.head.Value, head+chunk) // q.head.LazyAdd(chunk)
-	return chunk
+	return true
 }

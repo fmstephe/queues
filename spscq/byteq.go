@@ -28,7 +28,7 @@ func NewByteQ(size int64) *ByteQ {
 	return q
 }
 
-func (q *ByteQ) Write(writeBuffer []byte) int64 {
+func (q *ByteQ) Write(writeBuffer []byte) bool {
 	chunk := int64(len(writeBuffer))
 	tail := q.tail.Value
 	writeTo := tail + chunk
@@ -36,7 +36,7 @@ func (q *ByteQ) Write(writeBuffer []byte) int64 {
 	if headLimit > q.headCache.Value {
 		q.headCache.Value = q.head.ALoad()
 		if headLimit > q.headCache.Value {
-			return 0
+			return false
 		}
 	}
 	idx := tail & q.mask
@@ -49,17 +49,17 @@ func (q *ByteQ) Write(writeBuffer []byte) int64 {
 		copy(q.ringBuffer, writeBuffer[mid:])
 	}
 	q.tail.LazyAdd(chunk)
-	return chunk
+	return true
 }
 
-func (q *ByteQ) Read(readBuffer []byte) int64 {
+func (q *ByteQ) Read(readBuffer []byte) bool {
 	head := q.head.Value
 	tail := q.tailCache.Value
 	if head == tail {
 		q.tailCache.Value = q.tail.ALoad()
 		tail = q.tailCache.Value
 		if head == tail {
-			return 0
+			return false
 		}
 	}
 	chunk := min(tail-head, int64(len(readBuffer)))
@@ -73,5 +73,5 @@ func (q *ByteQ) Read(readBuffer []byte) int64 {
 		copy(readBuffer[mid:], q.ringBuffer)
 	}
 	q.head.LazyAdd(chunk)
-	return chunk
+	return true
 }
