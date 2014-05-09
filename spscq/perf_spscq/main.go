@@ -8,37 +8,42 @@ import (
 	"runtime/pprof"
 	"time"
 	"flag"
+	"unsafe"
 )
 
 var (
 	llq = flag.Bool("llq", false, "Runs LLChunkQ")
-	chunkq = flag.Bool("chunkq", false, "Runs ChunkQ")
-	byteq = flag.Bool("byteq", false, "Runs ByteQ")
-	millionMsgs = flag.Int64("mm", 66, "The number of messages (in millions) to send")
+	cq = flag.Bool("cq", false, "Runs ChunkQ")
+	bq = flag.Bool("bq", false, "Runs ByteQ")
+	pq = flag.Bool("pq", false, "Runs PointerQ")
+	millionMsgs = flag.Int64("mm", 10, "The number of messages (in millions) to send")
+	bytesSize = flag.Int64("bytesSize", 63, "The number of bytes to read/write in ByteQ")
+	chunkSize = flag.Int64("chunkSize", 64, "The number of bytes to read/write in LLChunkQ and ChunkQ")
+	qSize = flag.Int64("qSize", 1024 * 1024, "The size of the queue")
 )
 
 func main() {
 	flag.Parse()
-	var (
-		bytesSize int64 = 63
-		chunkSize int64 = 64
-		queueSize int64 = 1024 * 1024
-		msgCount int64 = (*millionMsgs) * 1000 * 1000
-	)
+	var msgCount int64 = (*millionMsgs) * 1000 * 1000
 	if *llq {
 		runtime.GC()
-		llw, llr, name := llchunkTest(msgCount, queueSize, chunkSize)
-		perfTest(llw, llr, name)
+		w, r := llchunkTest(msgCount, *qSize, *chunkSize)
+		perfTest(w, r, "llq")
 	}
-	if *chunkq {
+	if *cq {
 		runtime.GC()
-		cw, cr, name := chunkTest(msgCount, queueSize, chunkSize)
-		perfTest(cw, cr, name)
+		w, r := chunkTest(msgCount, *qSize, *chunkSize)
+		perfTest(w, r, "cq")
 	}
-	if *byteq {
+	if *bq {
 		runtime.GC()
-		bw, br, name := byteqTest(msgCount, queueSize, bytesSize)
-		perfTest(bw, br, name)
+		w, r := byteqTest(msgCount, *qSize, *bytesSize)
+		perfTest(w, r, "bq")
+	}
+	if *pq {
+		runtime.GC()
+		w, r := pqTest(msgCount, *qSize)
+		perfTest(w, r, "pq")
 	}
 }
 
@@ -76,7 +81,7 @@ func reader(readf func(), name string, done chan bool) {
 	done <- true
 }
 
-func llchunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func(), name string) {
+func llchunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func()) {
 	q := spscq.NewLLChunkQ(qSize, chunkSize)
 	writerf = func() {
 		for i := int64(0); i < msgCount; i++ {
@@ -102,10 +107,10 @@ func llchunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func
 		}
 		expect(sum, checksum)
 	}
-	return writerf, readerf, "llq"
+	return writerf, readerf
 }
 
-func chunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func(), name string) {
+func chunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func()) {
 	q := spscq.NewChunkQ(qSize, chunkSize)
 	writerf = func() {
 		writeBuffer := q.WriteBuffer()
@@ -125,10 +130,10 @@ func chunkTest(msgCount, qSize, chunkSize int64) (writerf func(), readerf func()
 		}
 		expect(sum, checksum)
 	}
-	return writerf, readerf, "chunkq"
+	return writerf, readerf
 }
 
-func byteqTest(msgCount, qSize, byteSize int64) (writerf func(), readerf func(), name string) {
+func byteqTest(msgCount, qSize, byteSize int64) (writerf func(), readerf func()) {
 	q := spscq.NewByteQ(qSize)
 	writerf = func() {
 		writeBuffer := make([]byte, byteSize)
@@ -148,7 +153,33 @@ func byteqTest(msgCount, qSize, byteSize int64) (writerf func(), readerf func(),
 		}
 		expect(sum, checksum)
 	}
-	return writerf, readerf, "byteq"
+	return writerf, readerf
+}
+
+func pqTest(msgCount, qSize int64) (writerf func(), readerf func()) {
+	q := spscq.NewPointerQ(qSize)
+	value := int64(777)
+	val := unsafe.Pointer(&value)
+	writerf = func() {
+		for i := int64(0); i < msgCount; i++ {
+			for w := false; w == false; w = q.Write(val) {
+			}
+		}
+	}
+	readerf = func() {
+		sum := int64(0)
+		checksum := int64(0)
+		for i := int64(0); i < msgCount; i++ {
+			r := unsafe.Pointer(nil)
+			for r == nil {
+				r = q.Read()
+			}
+			sum += *((*int64)(r))
+			checksum += value
+		}
+		expect(sum, checksum)
+	}
+	return writerf, readerf
 }
 
 func expect(sum, checksum int64) {
