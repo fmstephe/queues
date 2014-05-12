@@ -4,14 +4,13 @@ import (
 	"github.com/fmstephe/fstrconv"
 	"math/rand"
 	"testing"
-	"time"
 )
 
 func TestMin(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 1000; i++ {
-		a := rand.Int63n(10 * 1000)
-		b := rand.Int63n(10 * 1000)
+	rand.Seed(1)
+	for i := 0; i < 1000*1000; i++ {
+		a := rand.Int63n(1000 * 1000 * 1000)
+		b := rand.Int63n(1000 * 1000 * 1000)
 		m := min(a, b)
 		om := simpleMin(a, b)
 		if m != om {
