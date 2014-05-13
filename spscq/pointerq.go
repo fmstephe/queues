@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"github.com/fmstephe/fatomic"
 	"unsafe"
+	"sync/atomic"
 )
 
 type PointerQ struct {
-	_1        fatomic.AtomicInt
-	head      fatomic.AtomicInt
-	headCache fatomic.AtomicInt
-	tail      fatomic.AtomicInt
-	tailCache fatomic.AtomicInt
-	_2        fatomic.AtomicInt
+	_1        fatomic.Padded64Int64
+	head      fatomic.Padded64Int64
+	headCache fatomic.Padded64Int64
+	tail      fatomic.Padded64Int64
+	tailCache fatomic.Padded64Int64
+	_2        fatomic.Padded64Int64
 	// Read only
 	ringBuffer []unsafe.Pointer
 	size       int64
 	mask       int64
-	_3         fatomic.AtomicInt
+	_3         fatomic.Padded64Int64
 }
 
 func NewPointerQ(size int64) *PointerQ {
@@ -33,27 +34,27 @@ func (q *PointerQ) Write(val unsafe.Pointer) bool {
 	tail := q.tail.Value
 	headLimit := tail - q.size
 	if headLimit >= q.headCache.Value {
-		q.headCache.Value = q.head.ALoad()
+		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
 		if headLimit >= q.headCache.Value {
 			return false
 		}
 	}
 	idx := tail & q.mask
 	q.ringBuffer[idx] = val
-	q.tail.LazyAdd(1)
+	fatomic.LazyStore(&q.tail.Value, q.tail.Value+1)
 	return true
 }
 
 func (q *PointerQ) Read() unsafe.Pointer {
 	head := q.head.Value
 	if head == q.tailCache.Value {
-		q.tailCache.Value = q.tail.ALoad()
+		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
 		if head == q.tailCache.Value {
 			return nil
 		}
 	}
 	idx := head & q.mask
 	val := q.ringBuffer[idx]
-	q.head.LazyAdd(1)
+	fatomic.LazyStore(&q.head.Value, q.head.Value+1)
 	return val
 }

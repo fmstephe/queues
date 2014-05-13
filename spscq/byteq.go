@@ -3,20 +3,21 @@ package spscq
 import (
 	"fmt"
 	"github.com/fmstephe/fatomic"
+	"sync/atomic"
 )
 
 type ByteQ struct {
-	_1        fatomic.AtomicInt
-	head      fatomic.AtomicInt
-	headCache fatomic.AtomicInt
-	tail      fatomic.AtomicInt
-	tailCache fatomic.AtomicInt
-	_2        fatomic.AtomicInt
+	_1        fatomic.Padded64Int64
+	head      fatomic.Padded64Int64
+	headCache fatomic.Padded64Int64
+	tail      fatomic.Padded64Int64
+	tailCache fatomic.Padded64Int64
+	_2        fatomic.Padded64Int64
 	// Read only
 	ringBuffer []byte
 	size       int64
 	mask       int64
-	_3         fatomic.AtomicInt
+	_3         fatomic.Padded64Int64
 }
 
 func NewByteQ(size int64) *ByteQ {
@@ -34,7 +35,7 @@ func (q *ByteQ) Write(writeBuffer []byte) bool {
 	writeTo := tail + chunk
 	headLimit := writeTo - q.size
 	if headLimit > q.headCache.Value {
-		q.headCache.Value = q.head.ALoad()
+		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
 		if headLimit > q.headCache.Value {
 			return false
 		}
@@ -48,7 +49,7 @@ func (q *ByteQ) Write(writeBuffer []byte) bool {
 		copy(q.ringBuffer[idx:], writeBuffer[:mid])
 		copy(q.ringBuffer, writeBuffer[mid:])
 	}
-	q.tail.LazyAdd(chunk)
+	fatomic.LazyStore(&q.tail.Value, q.tail.Value+chunk)
 	return true
 }
 
@@ -56,7 +57,7 @@ func (q *ByteQ) Read(readBuffer []byte) bool {
 	head := q.head.Value
 	tail := q.tailCache.Value
 	if head == tail {
-		q.tailCache.Value = q.tail.ALoad()
+		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
 		tail = q.tailCache.Value
 		if head == tail {
 			return false
@@ -72,6 +73,6 @@ func (q *ByteQ) Read(readBuffer []byte) bool {
 		copy(readBuffer[:mid], q.ringBuffer[idx:])
 		copy(readBuffer[mid:], q.ringBuffer)
 	}
-	q.head.LazyAdd(chunk)
+	fatomic.LazyStore(&q.head.Value, q.head.Value+chunk)
 	return true
 }

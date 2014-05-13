@@ -3,15 +3,16 @@ package spscq
 import (
 	"fmt"
 	"github.com/fmstephe/fatomic"
+	"sync/atomic"
 )
 
 type ChunkQ struct {
-	_1        fatomic.AtomicInt
-	head      fatomic.AtomicInt
-	headCache fatomic.AtomicInt
-	tail      fatomic.AtomicInt
-	tailCache fatomic.AtomicInt
-	_2        fatomic.AtomicInt
+	_1        fatomic.Padded64Int64
+	head      fatomic.Padded64Int64
+	headCache fatomic.Padded64Int64
+	tail      fatomic.Padded64Int64
+	tailCache fatomic.Padded64Int64
+	_2        fatomic.Padded64Int64
 	// Read only
 	ringBuffer  []byte
 	readBuffer  []byte
@@ -19,7 +20,7 @@ type ChunkQ struct {
 	size        int64
 	chunk       int64
 	mask        int64
-	_3          fatomic.AtomicInt
+	_3          fatomic.Padded64Int64
 }
 
 func NewChunkQ(size int64, chunk int64) *ChunkQ {
@@ -46,7 +47,7 @@ func (q *ChunkQ) Write() bool {
 	writeTo := tail + chunk
 	headLimit := writeTo - q.size
 	if headLimit > q.headCache.Value {
-		q.headCache.Value = q.head.ALoad()
+		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
 		if headLimit > q.headCache.Value {
 			return false
 		}
@@ -67,7 +68,7 @@ func (q *ChunkQ) Read() bool {
 	head := q.head.Value
 	readTo := head + chunk
 	if readTo > q.tailCache.Value {
-		q.tailCache.Value = q.tail.ALoad()
+		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
 		if readTo > q.tailCache.Value {
 			return false
 		}
