@@ -3,8 +3,8 @@ package spscq
 import (
 	"fmt"
 	"github.com/fmstephe/fatomic"
-	"unsafe"
 	"sync/atomic"
+	"unsafe"
 )
 
 type PointerQ struct {

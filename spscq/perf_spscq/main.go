@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	all         = flag.Bool("all", false, "Runs all queue tests")
 	llq         = flag.Bool("llq", false, "Runs LLChunkQ")
 	cq          = flag.Bool("cq", false, "Runs ChunkQ")
 	bq          = flag.Bool("bq", false, "Runs ByteQ")
@@ -21,19 +22,19 @@ func main() {
 	runtime.GOMAXPROCS(4)
 	flag.Parse()
 	var msgCount int64 = (*millionMsgs) * 1000 * 1000
-	if *llq {
+	if *llq || *all {
 		runtime.GC()
 		llqTest(msgCount, *chunkSize, *qSize)
 	}
-	if *cq {
+	if *cq || *all {
 		runtime.GC()
 		cqTest(msgCount, *chunkSize, *qSize)
 	}
-	if *bq {
+	if *bq || *all {
 		runtime.GC()
 		bqTest(msgCount, *bytesSize, *qSize)
 	}
-	if *pq {
+	if *pq || *all {
 		runtime.GC()
 		pqTest(msgCount, *qSize)
 	}
