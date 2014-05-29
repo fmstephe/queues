@@ -7,14 +7,7 @@ func divisble(num, denom int64) bool {
 }
 
 func powerOfTwo(val int64) bool {
-	pow := int64(2)
-	for i := 0; i < 64; i++ {
-		if val == pow {
-			return true
-		}
-		pow *= 2
-	}
-	return false
+	return val >= 0 && val&(val-1) == 0
 }
 
 // NB: Only valid if math.MinInt64 <= x-y <= math.MaxInt64
