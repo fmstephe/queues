@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"runtime"
+
+	"github.com/fmstephe/fstrconv"
 )
 
 var (
@@ -40,11 +42,11 @@ func main() {
 	}
 }
 
-func printTimings(nanos int64, name string) {
+func printTimings(msgCount, nanos int64, name string) {
 	micros := nanos / 1000
 	millis := micros / 1000
 	seconds := millis / 1000
-	print(fmt.Sprintf("\n%s\nNanos   %d\nMicros  %d\nMillis  %d\nSeconds %d\n", name, nanos, micros, millis, seconds))
+	print(fmt.Sprintf("\n%s\n%s\nNanos   %d\nMicros  %d\nMillis  %d\nSeconds %d\n", name, fstrconv.Itoa64Comma(msgCount), nanos, micros, millis, seconds))
 }
 
 func expect(sum, checksum int64) {

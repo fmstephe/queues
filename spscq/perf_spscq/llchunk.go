@@ -37,12 +37,12 @@ func llqEnqueue(num int64, q *spscq.LLChunkQ, done chan bool) {
 	done <- true
 }
 
-func llqDequeue(num int64, q *spscq.LLChunkQ, done chan bool) {
+func llqDequeue(msgCount int64, q *spscq.LLChunkQ, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	sum := int64(0)
 	checksum := int64(0)
-	for i := int64(0); i < num; i++ {
+	for i := int64(0); i < msgCount; i++ {
 		readBuffer := q.ReadBuffer()
 		for readBuffer == nil {
 			readBuffer = q.ReadBuffer()
@@ -52,7 +52,7 @@ func llqDequeue(num int64, q *spscq.LLChunkQ, done chan bool) {
 		q.CommitRead()
 	}
 	nanos := time.Now().UnixNano() - start
-	printTimings(nanos, "llq")
+	printTimings(msgCount, nanos, "llq")
 	expect(sum, checksum)
 	done <- true
 }

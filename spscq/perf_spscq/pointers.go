@@ -36,18 +36,20 @@ func pqTest(msgCount, qSize int64) {
 func enqueue(num int64, q *spscq.PointerQ, done chan bool) {
 	runtime.LockOSThread()
 	for i := int64(0); i < num; i++ {
-		for w := false; w == false; w = q.Write(val) {
+		w := q.Write(val)
+		for w == false {
+			w = q.Write(val)
 		}
 	}
 	done <- true
 }
 
-func dequeue(num int64, q *spscq.PointerQ, done chan bool) {
+func dequeue(msgCount int64, q *spscq.PointerQ, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	sum := int64(0)
 	checksum := int64(0)
-	for i := int64(0); i < num; i++ {
+	for i := int64(0); i < msgCount; i++ {
 		r := unsafe.Pointer(nil)
 		for r == nil {
 			r = q.Read()
@@ -56,7 +58,7 @@ func dequeue(num int64, q *spscq.PointerQ, done chan bool) {
 		checksum += value
 	}
 	nanos := time.Now().UnixNano() - start
-	printTimings(nanos, "pq")
+	printTimings(msgCount, nanos, "pq")
 	expect(sum, checksum)
 	done <- true
 }
