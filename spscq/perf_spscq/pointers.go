@@ -10,14 +10,6 @@ import (
 	"github.com/fmstephe/queues/spscq"
 )
 
-var value int64
-var val unsafe.Pointer
-
-func init() {
-	value = 777
-	val = unsafe.Pointer(&value)
-}
-
 func pqTest(msgCount, qSize int64) {
 	q := spscq.NewPointerQ(qSize)
 	done := make(chan bool)
@@ -26,14 +18,14 @@ func pqTest(msgCount, qSize int64) {
 		panic(err.Error())
 	}
 	pprof.StartCPUProfile(f)
-	go dequeue(msgCount, q, done)
-	go enqueue(msgCount, q, done)
+	go pqDequeue(msgCount, q, done)
+	go pqEnqueue(msgCount, q, done)
 	<-done
 	<-done
 	pprof.StopCPUProfile()
 }
 
-func enqueue(msgCount int64, q *spscq.PointerQ, done chan bool) {
+func pqEnqueue(msgCount int64, q *spscq.PointerQ, done chan bool) {
 	runtime.LockOSThread()
 	t := 1
 	var v unsafe.Pointer
@@ -48,7 +40,7 @@ func enqueue(msgCount int64, q *spscq.PointerQ, done chan bool) {
 	done <- true
 }
 
-func dequeue(msgCount int64, q *spscq.PointerQ, done chan bool) {
+func pqDequeue(msgCount int64, q *spscq.PointerQ, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	sum := int64(0)
