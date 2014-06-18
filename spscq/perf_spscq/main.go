@@ -14,7 +14,7 @@ var (
 	cq          = flag.Bool("cq", false, "Runs ChunkQ")
 	bq          = flag.Bool("bq", false, "Runs ByteQ")
 	pq          = flag.Bool("pq", false, "Runs PointerQ")
-	batch = flag.Bool("batch", false, "Runs BatchQ")
+	batch       = flag.Bool("batch", false, "Runs BatchQ")
 	millionMsgs = flag.Int64("mm", 10, "The number of messages (in millions) to send")
 	bytesSize   = flag.Int64("bytesSize", 63, "The number of bytes to read/write in ByteQ")
 	chunkSize   = flag.Int64("chunkSize", 64, "The number of bytes to read/write in LLChunkQ and ChunkQ, also the number of pointers to read/write in BatchQ")

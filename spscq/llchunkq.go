@@ -7,12 +7,12 @@ import (
 )
 
 type LLChunkQ struct {
-	_1        fatomic.Padded64Int64
-	head      fatomic.Padded64Int64
-	headCache fatomic.Padded64Int64
-	tail      fatomic.Padded64Int64
-	tailCache fatomic.Padded64Int64
-	_2        fatomic.Padded64Int64
+	_1         fatomic.Padded64Int64
+	read       fatomic.Padded64Int64
+	readCache  fatomic.Padded64Int64
+	write      fatomic.Padded64Int64
+	writeCache fatomic.Padded64Int64
+	_2         fatomic.Padded64Int64
 	// Read only
 	ringBuffer []byte
 	size       int64
@@ -35,39 +35,39 @@ func NewLLChunkQ(size int64, chunk int64) *LLChunkQ {
 
 func (q *LLChunkQ) WriteBuffer() []byte {
 	chunk := q.chunk
-	tail := q.tail.Value
-	writeTo := tail + chunk
-	headLimit := writeTo - q.size
-	if headLimit > q.headCache.Value {
-		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
-		if headLimit > q.headCache.Value {
+	write := q.write.Value
+	writeTo := write + chunk
+	readLimit := writeTo - q.size
+	if readLimit > q.readCache.Value {
+		q.readCache.Value = atomic.LoadInt64(&q.read.Value)
+		if readLimit > q.readCache.Value {
 			return nil
 		}
 	}
-	idx := tail & q.mask
+	idx := write & q.mask
 	nxt := idx + chunk
 	return q.ringBuffer[idx:nxt]
 }
 
 func (q *LLChunkQ) CommitWrite() {
-	fatomic.LazyStore(&q.tail.Value, q.tail.Value+q.chunk) // q.tail.LazyAdd(q.chunk)
+	fatomic.LazyStore(&q.write.Value, q.write.Value+q.chunk) // q.write.LazyAdd(q.chunk)
 }
 
 func (q *LLChunkQ) ReadBuffer() []byte {
 	chunk := q.chunk
-	head := q.head.Value
-	readTo := head + chunk
-	if readTo > q.tailCache.Value {
-		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
-		if readTo > q.tailCache.Value {
+	read := q.read.Value
+	readTo := read + chunk
+	if readTo > q.writeCache.Value {
+		q.writeCache.Value = atomic.LoadInt64(&q.write.Value)
+		if readTo > q.writeCache.Value {
 			return nil
 		}
 	}
-	idx := head & q.mask
+	idx := read & q.mask
 	nxt := idx + chunk
 	return q.ringBuffer[idx:nxt]
 }
 
 func (q *LLChunkQ) CommitRead() {
-	fatomic.LazyStore(&q.head.Value, q.head.Value+q.chunk) // q.head.LazyAdd(q.chunk)
+	fatomic.LazyStore(&q.read.Value, q.read.Value+q.chunk) // q.read.LazyAdd(q.chunk)
 }

@@ -8,12 +8,12 @@ import (
 )
 
 type PointerQ struct {
-	_1        fatomic.Padded64Int64
-	head      fatomic.Padded64Int64
-	headCache fatomic.Padded64Int64
-	tail      fatomic.Padded64Int64
-	tailCache fatomic.Padded64Int64
-	_2        fatomic.Padded64Int64
+	_1         fatomic.Padded64Int64
+	read       fatomic.Padded64Int64
+	readCache  fatomic.Padded64Int64
+	write      fatomic.Padded64Int64
+	writeCache fatomic.Padded64Int64
+	_2         fatomic.Padded64Int64
 	// Read only
 	ringBuffer []unsafe.Pointer
 	size       int64
@@ -31,30 +31,30 @@ func NewPointerQ(size int64) *PointerQ {
 }
 
 func (q *PointerQ) Write(val unsafe.Pointer) bool {
-	tail := q.tail.Value
-	headLimit := tail - q.size
-	if headLimit >= q.headCache.Value {
-		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
-		if headLimit >= q.headCache.Value {
+	write := q.write.Value
+	readLimit := write - q.size
+	if readLimit >= q.readCache.Value {
+		q.readCache.Value = atomic.LoadInt64(&q.read.Value)
+		if readLimit >= q.readCache.Value {
 			return false
 		}
 	}
-	idx := tail & q.mask
+	idx := write & q.mask
 	q.ringBuffer[idx] = val
-	fatomic.LazyStore(&q.tail.Value, q.tail.Value+1)
+	fatomic.LazyStore(&q.write.Value, q.write.Value+1)
 	return true
 }
 
 func (q *PointerQ) Read() unsafe.Pointer {
-	head := q.head.Value
-	if head == q.tailCache.Value {
-		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
-		if head == q.tailCache.Value {
+	read := q.read.Value
+	if read == q.writeCache.Value {
+		q.writeCache.Value = atomic.LoadInt64(&q.write.Value)
+		if read == q.writeCache.Value {
 			return nil
 		}
 	}
-	idx := head & q.mask
+	idx := read & q.mask
 	val := q.ringBuffer[idx]
-	fatomic.LazyStore(&q.head.Value, q.head.Value+1)
+	fatomic.LazyStore(&q.read.Value, q.read.Value+1)
 	return val
 }

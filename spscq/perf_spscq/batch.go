@@ -29,7 +29,7 @@ func batchqEnqueue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan b
 	runtime.LockOSThread()
 	var t int64
 	var buffer []unsafe.Pointer
-	OUTER:
+OUTER:
 	for {
 		buffer = q.WriteBuffer(batchSize)
 		for buffer == nil {
@@ -58,7 +58,7 @@ func batchqDequeue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan b
 	var checksum int64
 	var t int64
 	var buffer []unsafe.Pointer
-	OUTER:
+OUTER:
 	for {
 		buffer = q.ReadBuffer(batchSize)
 		for buffer == nil {

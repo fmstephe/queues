@@ -7,12 +7,12 @@ import (
 )
 
 type ByteQ struct {
-	_1        fatomic.Padded64Int64
-	head      fatomic.Padded64Int64
-	headCache fatomic.Padded64Int64
-	tail      fatomic.Padded64Int64
-	tailCache fatomic.Padded64Int64
-	_2        fatomic.Padded64Int64
+	_1         fatomic.Padded64Int64
+	read       fatomic.Padded64Int64
+	readCache  fatomic.Padded64Int64
+	write      fatomic.Padded64Int64
+	writeCache fatomic.Padded64Int64
+	_2         fatomic.Padded64Int64
 	// Read only
 	ringBuffer []byte
 	size       int64
@@ -31,16 +31,16 @@ func NewByteQ(size int64) *ByteQ {
 
 func (q *ByteQ) Write(writeBuffer []byte) bool {
 	chunk := int64(len(writeBuffer))
-	tail := q.tail.Value
-	writeTo := tail + chunk
-	headLimit := writeTo - q.size
-	if headLimit > q.headCache.Value {
-		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
-		if headLimit > q.headCache.Value {
+	write := q.write.Value
+	writeTo := write + chunk
+	readLimit := writeTo - q.size
+	if readLimit > q.readCache.Value {
+		q.readCache.Value = atomic.LoadInt64(&q.read.Value)
+		if readLimit > q.readCache.Value {
 			return false
 		}
 	}
-	idx := tail & q.mask
+	idx := write & q.mask
 	nxt := idx + chunk
 	if nxt <= q.size {
 		copy(q.ringBuffer[idx:nxt], writeBuffer)
@@ -49,22 +49,22 @@ func (q *ByteQ) Write(writeBuffer []byte) bool {
 		copy(q.ringBuffer[idx:], writeBuffer[:mid])
 		copy(q.ringBuffer, writeBuffer[mid:])
 	}
-	fatomic.LazyStore(&q.tail.Value, q.tail.Value+chunk)
+	fatomic.LazyStore(&q.write.Value, q.write.Value+chunk)
 	return true
 }
 
 func (q *ByteQ) Read(readBuffer []byte) bool {
-	head := q.head.Value
-	tail := q.tailCache.Value
-	if head == tail {
-		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
-		tail = q.tailCache.Value
-		if head == tail {
+	read := q.read.Value
+	write := q.writeCache.Value
+	if read == write {
+		q.writeCache.Value = atomic.LoadInt64(&q.write.Value)
+		write = q.writeCache.Value
+		if read == write {
 			return false
 		}
 	}
-	chunk := min(tail-head, int64(len(readBuffer)))
-	idx := head & q.mask
+	chunk := min(write-read, int64(len(readBuffer)))
+	idx := read & q.mask
 	nxt := idx + chunk
 	if nxt <= q.size {
 		copy(readBuffer, q.ringBuffer[idx:nxt])
@@ -73,6 +73,6 @@ func (q *ByteQ) Read(readBuffer []byte) bool {
 		copy(readBuffer[:mid], q.ringBuffer[idx:])
 		copy(readBuffer[mid:], q.ringBuffer)
 	}
-	fatomic.LazyStore(&q.head.Value, q.head.Value+chunk)
+	fatomic.LazyStore(&q.read.Value, q.read.Value+chunk)
 	return true
 }

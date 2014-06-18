@@ -7,12 +7,12 @@ import (
 )
 
 type ChunkQ struct {
-	_1        fatomic.Padded64Int64
-	head      fatomic.Padded64Int64
-	headCache fatomic.Padded64Int64
-	tail      fatomic.Padded64Int64
-	tailCache fatomic.Padded64Int64
-	_2        fatomic.Padded64Int64
+	_1         fatomic.Padded64Int64
+	read       fatomic.Padded64Int64
+	readCache  fatomic.Padded64Int64
+	write      fatomic.Padded64Int64
+	writeCache fatomic.Padded64Int64
+	_2         fatomic.Padded64Int64
 	// Read only
 	ringBuffer  []byte
 	readBuffer  []byte
@@ -43,19 +43,19 @@ func (q *ChunkQ) ReadBuffer() []byte {
 
 func (q *ChunkQ) Write() bool {
 	chunk := q.chunk
-	tail := q.tail.Value
-	writeTo := tail + chunk
-	headLimit := writeTo - q.size
-	if headLimit > q.headCache.Value {
-		q.headCache.Value = atomic.LoadInt64(&q.head.Value)
-		if headLimit > q.headCache.Value {
+	write := q.write.Value
+	writeTo := write + chunk
+	readLimit := writeTo - q.size
+	if readLimit > q.readCache.Value {
+		q.readCache.Value = atomic.LoadInt64(&q.read.Value)
+		if readLimit > q.readCache.Value {
 			return false
 		}
 	}
-	idx := tail & q.mask
+	idx := write & q.mask
 	nxt := idx + chunk
 	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
-	fatomic.LazyStore(&q.tail.Value, tail+chunk) // q.tail.LazyAdd(chunk)
+	fatomic.LazyStore(&q.write.Value, write+chunk) // q.write.LazyAdd(chunk)
 	return true
 }
 
@@ -65,17 +65,17 @@ func (q *ChunkQ) WriteBuffer() []byte {
 
 func (q *ChunkQ) Read() bool {
 	chunk := q.chunk
-	head := q.head.Value
-	readTo := head + chunk
-	if readTo > q.tailCache.Value {
-		q.tailCache.Value = atomic.LoadInt64(&q.tail.Value)
-		if readTo > q.tailCache.Value {
+	read := q.read.Value
+	readTo := read + chunk
+	if readTo > q.writeCache.Value {
+		q.writeCache.Value = atomic.LoadInt64(&q.write.Value)
+		if readTo > q.writeCache.Value {
 			return false
 		}
 	}
-	idx := head & q.mask
+	idx := read & q.mask
 	nxt := idx + chunk
 	copy(q.readBuffer, q.ringBuffer[idx:nxt])
-	fatomic.LazyStore(&q.head.Value, head+chunk) // q.head.LazyAdd(chunk)
+	fatomic.LazyStore(&q.read.Value, read+chunk) // q.read.LazyAdd(chunk)
 	return true
 }

@@ -8,13 +8,13 @@ import (
 )
 
 type BatchQ struct {
-	_1        fatomic.Padded64Int64
-	head      int64
-	tailCache int64
-	_2        fatomic.Padded64Int64
-	tail      int64
-	headCache int64
-	_3        fatomic.Padded64Int64
+	_1         fatomic.Padded64Int64
+	read       int64
+	writeCache int64
+	_2         fatomic.Padded64Int64
+	write      int64
+	readCache  int64
+	_3         fatomic.Padded64Int64
 	// Read only
 	ringBuffer []unsafe.Pointer
 	size       int64
@@ -32,40 +32,40 @@ func NewBatchQ(size int64) *BatchQ {
 }
 
 func (q *BatchQ) WriteBuffer(bufferSize int64) []unsafe.Pointer {
-	tail := q.tail
-	idx := tail & q.mask
+	write := q.write
+	idx := write & q.mask
 	bufferSize = min(bufferSize, q.size-idx)
-	writeTo := tail + bufferSize
-	headLimit := writeTo - q.size
+	writeTo := write + bufferSize
+	readLimit := writeTo - q.size
 	nxt := idx + bufferSize
-	if headLimit > q.headCache {
-		q.headCache = atomic.LoadInt64(&q.head)
-		if headLimit > q.headCache {
-			nxt = q.headCache &q.mask
+	if readLimit > q.readCache {
+		q.readCache = atomic.LoadInt64(&q.read)
+		if readLimit > q.readCache {
+			nxt = q.readCache & q.mask
 		}
 	}
 	return q.ringBuffer[idx:nxt]
 }
 
 func (q *BatchQ) CommitWrite(writeSize int64) {
-	atomic.StoreInt64(&q.tail, q.tail+writeSize)
+	atomic.StoreInt64(&q.write, q.write+writeSize)
 }
 
 func (q *BatchQ) ReadBuffer(bufferSize int64) []unsafe.Pointer {
-	head := q.head
-	idx := head & q.mask
+	read := q.read
+	idx := read & q.mask
 	bufferSize = min(bufferSize, q.size-idx)
-	readTo := head + bufferSize
+	readTo := read + bufferSize
 	nxt := idx + bufferSize
-	if readTo > q.tailCache {
-		q.tailCache = atomic.LoadInt64(&q.tail)
-		if readTo > q.tailCache {
-			nxt = q.tailCache & q.mask
+	if readTo > q.writeCache {
+		q.writeCache = atomic.LoadInt64(&q.write)
+		if readTo > q.writeCache {
+			nxt = q.writeCache & q.mask
 		}
 	}
 	return q.ringBuffer[idx:nxt]
 }
 
 func (q *BatchQ) CommitRead(readSize int64) {
-	atomic.StoreInt64(&q.head, q.head+readSize)
+	atomic.StoreInt64(&q.read, q.read+readSize)
 }
