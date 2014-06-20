@@ -26,6 +26,14 @@ func batchqTest(msgCount, batchSize, qSize int64) {
 }
 
 func batchqEnqueue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
+	if batchSize > 1 {
+		batchqBatchEnqueue(msgCount, q, batchSize, done)
+	} else {
+		batchqSingleEnqueue(msgCount, q, batchSize, done)
+	}
+}
+
+func batchqBatchEnqueue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
 	runtime.LockOSThread()
 	var t int64
 	var buffer []unsafe.Pointer
@@ -38,12 +46,12 @@ OUTER:
 		for i := range buffer {
 			t++
 			if t > msgCount {
-				q.CommitWrite(int64(i))
+				q.CommitWriteBuffer(int64(i))
 				break OUTER
 			}
 			buffer[i] = unsafe.Pointer(uintptr(uint(t)))
 		}
-		q.CommitWrite(int64(len(buffer)))
+		q.CommitWriteBuffer(int64(len(buffer)))
 		if t == msgCount {
 			break
 		}
@@ -51,7 +59,30 @@ OUTER:
 	done <- true
 }
 
+func batchqSingleEnqueue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
+	runtime.LockOSThread()
+	t := 1
+	var v unsafe.Pointer
+	for i := int64(0); i < msgCount; i++ {
+		v = unsafe.Pointer(uintptr(uint(t)))
+		w := q.WriteSingle(v)
+		for w == false {
+			w = q.WriteSingle(v)
+		}
+		t++
+	}
+	done <- true
+}
+
 func batchqDequeue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
+	if batchSize > 1 {
+		batchqBatchDequeue(msgCount, q, batchSize, done)
+	} else {
+		batchqSingleDequeue(msgCount, q, batchSize, done)
+	}
+}
+
+func batchqBatchDequeue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
 	runtime.LockOSThread()
 	start := time.Now().UnixNano()
 	var sum int64
@@ -67,16 +98,36 @@ OUTER:
 		for i := range buffer {
 			t++
 			if t > msgCount {
-				q.CommitRead(int64(i))
+				q.CommitReadBuffer(int64(i))
 				break OUTER
 			}
 			sum += int64(uintptr(buffer[i]))
 			checksum += t
 		}
-		q.CommitRead(int64(len(buffer)))
+		q.CommitReadBuffer(int64(len(buffer)))
 		if t == msgCount {
 			break
 		}
+	}
+	nanos := time.Now().UnixNano() - start
+	printTimings(msgCount, nanos, "batchq")
+	expect(sum, checksum)
+	done <- true
+}
+
+func batchqSingleDequeue(msgCount int64, q *spscq.BatchQ, batchSize int64, done chan bool) {
+	runtime.LockOSThread()
+	start := time.Now().UnixNano()
+	sum := int64(0)
+	checksum := int64(0)
+	var v unsafe.Pointer
+	for i := int64(0); i < msgCount; i++ {
+		v = q.ReadSingle()
+		for v == nil {
+			v = q.ReadSingle()
+		}
+		sum += int64(uintptr(v))
+		checksum += i + 1
 	}
 	nanos := time.Now().UnixNano() - start
 	printTimings(msgCount, nanos, "batchq")

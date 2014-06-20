@@ -31,6 +31,20 @@ func NewBatchQ(size int64) *BatchQ {
 	return q
 }
 
+func (q *BatchQ) WriteSingle(val unsafe.Pointer) bool {
+	write := q.write
+	readLimit := write - q.size
+	if readLimit == q.readCache {
+		q.readCache = atomic.LoadInt64(&q.read)
+		if readLimit == q.readCache {
+			return false
+		}
+	}
+	q.ringBuffer[write&q.mask] = val
+	fatomic.LazyStore(&q.write, q.write+1)
+	return true
+}
+
 func (q *BatchQ) WriteBuffer(bufferSize int64) []unsafe.Pointer {
 	write := q.write
 	idx := write & q.mask
@@ -47,8 +61,21 @@ func (q *BatchQ) WriteBuffer(bufferSize int64) []unsafe.Pointer {
 	return q.ringBuffer[idx:nxt]
 }
 
-func (q *BatchQ) CommitWrite(writeSize int64) {
-	atomic.StoreInt64(&q.write, q.write+writeSize)
+func (q *BatchQ) CommitWriteBuffer(writeSize int64) {
+	fatomic.LazyStore(&q.write, q.write+writeSize)
+}
+
+func (q *BatchQ) ReadSingle() unsafe.Pointer {
+	read := q.read
+	if read == q.writeCache {
+		q.writeCache = atomic.LoadInt64(&q.write)
+		if read == q.writeCache {
+			return nil
+		}
+	}
+	val := q.ringBuffer[read&q.mask]
+	fatomic.LazyStore(&q.read, q.read+1)
+	return val
 }
 
 func (q *BatchQ) ReadBuffer(bufferSize int64) []unsafe.Pointer {
@@ -66,6 +93,6 @@ func (q *BatchQ) ReadBuffer(bufferSize int64) []unsafe.Pointer {
 	return q.ringBuffer[idx:nxt]
 }
 
-func (q *BatchQ) CommitRead(readSize int64) {
-	atomic.StoreInt64(&q.read, q.read+readSize)
+func (q *BatchQ) CommitReadBuffer(readSize int64) {
+	fatomic.LazyStore(&q.read, q.read+readSize)
 }
