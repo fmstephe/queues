@@ -15,6 +15,7 @@ var (
 	bq          = flag.Bool("bq", false, "Runs ByteQ")
 	pq          = flag.Bool("pq", false, "Runs PointerQ")
 	batch       = flag.Bool("batch", false, "Runs BatchQ")
+	ext       = flag.Bool("ext", false, "Runs ExtQ")
 	millionMsgs = flag.Int64("mm", 10, "The number of messages (in millions) to send")
 	bytesSize   = flag.Int64("bytesSize", 63, "The number of bytes to read/write in ByteQ")
 	chunkSize   = flag.Int64("chunkSize", 64, "The number of bytes to read/write in LLChunkQ and ChunkQ, also the number of pointers to read/write in BatchQ")
@@ -45,6 +46,10 @@ func main() {
 		runtime.GC()
 		batchqTest(msgCount, *chunkSize, *qSize)
 	}
+	if *ext || *all {
+		runtime.GC()
+		extqTest(msgCount, *chunkSize, *qSize)
+	}
 }
 
 func printTimings(msgCount, nanos int64, name string) {
@@ -56,6 +61,6 @@ func printTimings(msgCount, nanos int64, name string) {
 
 func expect(sum, checksum int64) {
 	if sum != checksum {
-		print(fmt.Sprintf("Sum does not match checksum. sum = %d, checksum = %d", sum, checksum))
+		print(fmt.Sprintf("Sum does not match checksum. sum = %d, checksum = %d\n", sum, checksum))
 	}
 }
