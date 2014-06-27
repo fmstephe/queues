@@ -2,22 +2,22 @@ package spscq
 
 import (
 	"fmt"
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"sync/atomic"
 )
 
 type ExtQ struct {
-	_1         fatomic.Padded64Int64
+	_1         padded.Int64
 	read       int64
 	writeCache int64
-	_2         fatomic.Padded64Int64
+	_2         padded.Int64
 	write      int64
 	readCache  int64
-	_3         fatomic.Padded64Int64
+	_3         padded.Int64
 	// Read only
-	size       int64
-	mask       int64
-	_4         fatomic.Padded64Int64
+	size int64
+	mask int64
+	_4   padded.Int64
 }
 
 func NewExtQ(size int64) *ExtQ {

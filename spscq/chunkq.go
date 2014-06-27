@@ -2,17 +2,18 @@ package spscq
 
 import (
 	"fmt"
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"sync/atomic"
 )
 
 type ChunkQ struct {
-	_1         fatomic.Padded64Int64
-	read       fatomic.Padded64Int64
-	readCache  fatomic.Padded64Int64
-	write      fatomic.Padded64Int64
-	writeCache fatomic.Padded64Int64
-	_2         fatomic.Padded64Int64
+	_1         padded.Int64
+	read       padded.Int64
+	readCache  padded.Int64
+	write      padded.Int64
+	writeCache padded.Int64
+	_2         padded.Int64
 	// Read only
 	ringBuffer  []byte
 	readBuffer  []byte
@@ -20,7 +21,7 @@ type ChunkQ struct {
 	size        int64
 	chunk       int64
 	mask        int64
-	_3          fatomic.Padded64Int64
+	_3          padded.Int64
 }
 
 func NewChunkQ(size int64, chunk int64) *ChunkQ {
@@ -30,9 +31,9 @@ func NewChunkQ(size int64, chunk int64) *ChunkQ {
 	if size%chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
-	ringBuffer := fatomic.CacheProtectedBytes(int(size))
-	readBuffer := fatomic.CacheProtectedBytes(int(chunk))
-	writeBuffer := fatomic.CacheProtectedBytes(int(chunk))
+	ringBuffer := padded.ByteSlice(int(size))
+	readBuffer := padded.ByteSlice(int(chunk))
+	writeBuffer := padded.ByteSlice(int(chunk))
 	q := &ChunkQ{ringBuffer: ringBuffer, readBuffer: readBuffer, writeBuffer: writeBuffer, size: size, chunk: chunk, mask: size - 1}
 	return q
 }
@@ -55,7 +56,7 @@ func (q *ChunkQ) Write() bool {
 	idx := write & q.mask
 	nxt := idx + chunk
 	copy(q.ringBuffer[idx:nxt], q.writeBuffer)
-	fatomic.LazyStore(&q.write.Value, write+chunk) // q.write.LazyAdd(chunk)
+	fatomic.LazyStore(&q.write.Value, write+chunk)
 	return true
 }
 
@@ -76,6 +77,6 @@ func (q *ChunkQ) Read() bool {
 	idx := read & q.mask
 	nxt := idx + chunk
 	copy(q.readBuffer, q.ringBuffer[idx:nxt])
-	fatomic.LazyStore(&q.read.Value, read+chunk) // q.read.LazyAdd(chunk)
+	fatomic.LazyStore(&q.read.Value, read+chunk)
 	return true
 }

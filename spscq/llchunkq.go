@@ -2,23 +2,24 @@ package spscq
 
 import (
 	"fmt"
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"sync/atomic"
 )
 
 type LLChunkQ struct {
-	_1         fatomic.Padded64Int64
-	read       fatomic.Padded64Int64
-	readCache  fatomic.Padded64Int64
-	write      fatomic.Padded64Int64
-	writeCache fatomic.Padded64Int64
-	_2         fatomic.Padded64Int64
+	_1         padded.Int64
+	read       padded.Int64
+	readCache  padded.Int64
+	write      padded.Int64
+	writeCache padded.Int64
+	_2         padded.Int64
 	// Read only
 	ringBuffer []byte
 	size       int64
 	chunk      int64
 	mask       int64
-	_3         fatomic.Padded64Int64
+	_3         padded.Int64
 }
 
 func NewLLChunkQ(size int64, chunk int64) *LLChunkQ {
@@ -28,7 +29,7 @@ func NewLLChunkQ(size int64, chunk int64) *LLChunkQ {
 	if size%chunk != 0 {
 		panic(fmt.Sprintf("Size must be neatly divisible by chunk, (size) %d rem (chunk) %d = %d", size, chunk, size%chunk))
 	}
-	ringBuffer := fatomic.CacheProtectedBytes(int(size))
+	ringBuffer := padded.ByteSlice(int(size))
 	q := &LLChunkQ{ringBuffer: ringBuffer, size: size, chunk: chunk, mask: size - 1}
 	return q
 }
@@ -50,7 +51,7 @@ func (q *LLChunkQ) WriteBuffer() []byte {
 }
 
 func (q *LLChunkQ) CommitWrite() {
-	fatomic.LazyStore(&q.write.Value, q.write.Value+q.chunk) // q.write.LazyAdd(q.chunk)
+	fatomic.LazyStore(&q.write.Value, q.write.Value+q.chunk)
 }
 
 func (q *LLChunkQ) ReadBuffer() []byte {
@@ -69,5 +70,5 @@ func (q *LLChunkQ) ReadBuffer() []byte {
 }
 
 func (q *LLChunkQ) CommitRead() {
-	fatomic.LazyStore(&q.read.Value, q.read.Value+q.chunk) // q.read.LazyAdd(q.chunk)
+	fatomic.LazyStore(&q.read.Value, q.read.Value+q.chunk)
 }

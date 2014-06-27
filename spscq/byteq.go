@@ -2,29 +2,30 @@ package spscq
 
 import (
 	"fmt"
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"sync/atomic"
 )
 
 type ByteQ struct {
-	_1         fatomic.Padded64Int64
-	read       fatomic.Padded64Int64
-	readCache  fatomic.Padded64Int64
-	write      fatomic.Padded64Int64
-	writeCache fatomic.Padded64Int64
-	_2         fatomic.Padded64Int64
+	_1         padded.Int64
+	read       padded.Int64
+	readCache  padded.Int64
+	write      padded.Int64
+	writeCache padded.Int64
+	_2         padded.Int64
 	// Read only
 	ringBuffer []byte
 	size       int64
 	mask       int64
-	_3         fatomic.Padded64Int64
+	_3         padded.Int64
 }
 
 func NewByteQ(size int64) *ByteQ {
 	if !powerOfTwo(size) {
 		panic(fmt.Sprintf("Size (%d) must be a power of two", size))
 	}
-	ringBuffer := fatomic.CacheProtectedBytes(int(size))
+	ringBuffer := padded.ByteSlice(int(size))
 	q := &ByteQ{ringBuffer: ringBuffer, size: size, mask: size - 1}
 	return q
 }

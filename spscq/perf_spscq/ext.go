@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"github.com/fmstephe/queues/spscq"
 )
 
@@ -21,8 +21,8 @@ func extqTest(msgCount, batchSize, qSize int64) {
 	if err != nil {
 		panic(err.Error())
 	}
-	ringBuffer = fatomic.CacheProtectedPointers(int(qSize))
-	mask = qSize-1
+	ringBuffer = padded.PointerSlice(int(qSize))
+	mask = qSize - 1
 	pprof.StartCPUProfile(f)
 	go extqDequeue(msgCount, q, batchSize, done)
 	go extqEnqueue(msgCount, q, batchSize, done)
@@ -46,7 +46,7 @@ OUTER:
 				q.CommitWriteBuffer(i - low)
 				break OUTER
 			}
-			ringBuffer[i & mask] = unsafe.Pointer(uintptr(t))
+			ringBuffer[i&mask] = unsafe.Pointer(uintptr(t))
 		}
 		q.CommitWriteBuffer(high - low)
 		if t == msgCount {
@@ -78,7 +78,7 @@ OUTER:
 				q.CommitReadBuffer(i - low)
 				break OUTER
 			}
-			sum += int64(uintptr(ringBuffer[i & mask]))
+			sum += int64(uintptr(ringBuffer[i&mask]))
 			checksum += t
 		}
 		q.CommitReadBuffer(high - low)

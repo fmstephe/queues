@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/fmstephe/fstrconv"
+	"github.com/fmstephe/flib/fstrconv"
 )
 
 var (
@@ -15,7 +15,7 @@ var (
 	bq          = flag.Bool("bq", false, "Runs ByteQ")
 	pq          = flag.Bool("pq", false, "Runs PointerQ")
 	batch       = flag.Bool("batch", false, "Runs BatchQ")
-	ext       = flag.Bool("ext", false, "Runs ExtQ")
+	ext         = flag.Bool("ext", false, "Runs ExtQ")
 	millionMsgs = flag.Int64("mm", 10, "The number of messages (in millions) to send")
 	bytesSize   = flag.Int64("bytesSize", 63, "The number of bytes to read/write in ByteQ")
 	chunkSize   = flag.Int64("chunkSize", 64, "The number of bytes to read/write in LLChunkQ and ChunkQ, also the number of pointers to read/write in BatchQ")
@@ -56,7 +56,7 @@ func printTimings(msgCount, nanos int64, name string) {
 	micros := nanos / 1000
 	millis := micros / 1000
 	seconds := millis / 1000
-	print(fmt.Sprintf("\n%s\n%s\nNanos   %d\nMicros  %d\nMillis  %d\nSeconds %d\n", name, fstrconv.Itoa64Comma(msgCount), nanos, micros, millis, seconds))
+	print(fmt.Sprintf("\n%s\n%s\nNanos   %d\nMicros  %d\nMillis  %d\nSeconds %d\n", name, fstrconv.ItoaComma(msgCount), nanos, micros, millis, seconds))
 }
 
 func expect(sum, checksum int64) {

@@ -2,30 +2,31 @@ package spscq
 
 import (
 	"fmt"
-	"github.com/fmstephe/fatomic"
+	"github.com/fmstephe/flib/fsync/fatomic"
+	"github.com/fmstephe/flib/fsync/padded"
 	"sync/atomic"
 	"unsafe"
 )
 
 type PointerQ struct {
-	_1         fatomic.Padded64Int64
-	read       fatomic.Padded64Int64
-	readCache  fatomic.Padded64Int64
-	write      fatomic.Padded64Int64
-	writeCache fatomic.Padded64Int64
-	_2         fatomic.Padded64Int64
+	_1         padded.Int64
+	read       padded.Int64
+	readCache  padded.Int64
+	write      padded.Int64
+	writeCache padded.Int64
+	_2         padded.Int64
 	// Read only
 	ringBuffer []unsafe.Pointer
 	size       int64
 	mask       int64
-	_3         fatomic.Padded64Int64
+	_3         padded.Int64
 }
 
 func NewPointerQ(size int64) *PointerQ {
 	if !powerOfTwo(size) {
 		panic(fmt.Sprintf("Size must be a power of two, size = %d", size))
 	}
-	ringBuffer := fatomic.CacheProtectedPointers(int(size))
+	ringBuffer := padded.PointerSlice(int(size))
 	q := &PointerQ{ringBuffer: ringBuffer, size: size, mask: size - 1}
 	return q
 }
